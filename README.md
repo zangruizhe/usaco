@@ -1,1 +1,1 @@
-CPP solution of https://train.usaco.org/
+CPP solution for https://train.usaco.org/
