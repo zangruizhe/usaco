@@ -41,6 +41,7 @@ using ll = long long;
 using Index = pair<int, int>;
 
 using pii = pair<int, int>;
+using pll = pair<ll, ll>;
 using vi = vector<int>;
 using vvi = vector<vector<int>>;
 using vvvi = vector<vector<vector<int>>>;
@@ -3817,6 +3818,279 @@ struct ratios {
     }
   }
 };
+struct msquare {
+  string target;
+  string start = string{"12345678"};
+  unordered_map<char, int> cur_map;
+  unordered_map<char, int> t_map;
+
+  int rst_n = numeric_limits<int>::max();
+  string rst_s = "";
+  string OP_A(string cur) {
+    int i = 0;
+    int j = cur.size() - 1;
+    while (i < j) {
+      swap(cur[i], cur[j]);
+      i++;
+      j--;
+    }
+    return cur;
+  }
+  string OP_B(string cur) {
+    auto l = string(1, cur[3]);
+    auto r = string(1, cur[4]);
+    cur.erase(next(cur.begin(), 3));
+    cur.erase(next(cur.begin(), 3));
+    return l + cur + r;
+  }
+
+  string OP_C(string cur) {
+    swap(cur[1], cur[2]);
+    swap(cur[1], cur[5]);
+    swap(cur[1], cur[6]);
+    return cur;
+  }
+
+  unordered_set<string> visited;
+
+  void Print(const string &cur, const string &path) {
+    cout << endl;
+    for (int i = 0; i < 4; i++) {
+      cout << cur[i];
+    }
+    cout << endl;
+
+    for (int i = 7; i >= 4; i--) {
+      cout << cur[i];
+    }
+    cout << endl;
+
+    cout << path << endl;
+  }
+
+  void dfs(int n_A, int n_B, string cur, string path) {
+    Print(cur, path);
+    UpdateMap(cur_map, cur);
+
+    if (path.size() > rst_n)
+      return;
+
+    if (visited.find(cur) != visited.end()) {
+      return;
+    }
+
+    if (cur == target) {
+      if (path.size() < rst_n) {
+        rst_s = path;
+        rst_n = path.size();
+      } else if (path.size() == rst_n && path < rst_s) {
+        rst_s = path;
+      }
+      return;
+    }
+
+    visited.insert(cur);
+
+    auto good_up_down = all_of(cur.begin(), cur.end(), [this, &cur](char c) {
+      return CheckUpDown(c, cur);
+    });
+
+    auto good_in_row = all_of(cur.begin(), cur.end(),
+                              [this](char c) { return CheckInRightRow(c); });
+
+    if (good_in_row && good_up_down) {
+      dfs(n_A, n_B + 1, OP_B(cur), path + "B");
+    } else {
+      if (!good_up_down) {
+        if ((!CheckUpDown(cur[1], cur)) && (!CheckUpDown(cur[2], cur))) {
+          dfs(n_A, n_B, OP_C(cur), path + "C");
+        } else {
+          dfs(n_A, n_B + 1, OP_B(cur), path + "B");
+        }
+      }
+
+      if (!good_in_row) {
+        if (!CheckInRightRow('1')) {
+          dfs(n_A + 1, n_B, OP_A(cur), path + "A");
+        } else {
+          if (CheckInRightRow(cur[1]) || CheckInRightRow(cur[2])) {
+            dfs(n_A, n_B + 1, OP_B(cur), path + "B");
+          } else {
+            dfs(n_A, n_B, OP_C(OP_C(cur)), path + "CC");
+          }
+        }
+      }
+    }
+  }
+
+  void UpdateMap(unordered_map<char, int> &m, const string &s) {
+    for (int i = 0; i < s.size(); i++) {
+      m[s[i]] = i;
+    }
+  }
+
+  bool CheckUpDown(char c, const string &cur) {
+    return cur[7 - cur_map[c]] == target[7 - t_map[c]];
+  }
+
+  bool CheckInRightRow(char c) {
+    if (cur_map[c] < 4) {
+      return t_map[c] < 4;
+    } else {
+      return t_map[c] >= 4;
+    }
+  }
+
+  string bfs() {
+    auto mem = unordered_map<string, string>{};
+
+    auto cmp = [](const pair<string, string> &a,
+                  const pair<string, string> &b) {
+      if (a.second.size() == b.second.size()) {
+        return a > b;
+      }
+      return a.second.size() > b.second.size();
+    };
+
+    auto IsBetterPath = [&](const pair<string, string> &v) {
+      if (mem.find(v.first) == mem.end())
+        return true;
+
+      if (mem[v.first].size() > v.second.size())
+        return true;
+
+      if (mem[v.first].size() == v.second.size() && mem[v.first] > v.second)
+        return true;
+
+      return false;
+    };
+
+    auto pq = priority_queue<pair<string, string>, vector<pair<string, string>>,
+                             decltype(cmp)>(cmp);
+    pq.push(make_pair(start, ""));
+
+    while (!pq.empty()) {
+      auto v = pq.top();
+      pq.pop();
+      if (IsBetterPath(v)) {
+        mem[v.first] = v.second;
+
+        auto a = make_pair(OP_A(v.first), v.second + "A");
+        auto b = make_pair(OP_B(v.first), v.second + "B");
+        auto c = make_pair(OP_C(v.first), v.second + "C");
+        for (auto &t : {a, b, c}) {
+          if (IsBetterPath(t)) {
+            pq.push(t);
+          }
+        }
+      }
+    }
+
+    return mem[target];
+  }
+
+  auto Solution(const vector<string> &lines) {
+    auto tmp = SplitLine<int>(lines.front());
+    for (auto &v : tmp) {
+      target += to_string(v);
+    }
+
+    // UpdateMap(t_map, target);
+    // visited.clear();
+    // dfs(1, 0, OP_A(start), "A");
+    // visited.clear();
+    // dfs(0, 0, start, "");
+
+    rst_s = bfs();
+    auto rst = vector<string>{to_string(rst_s.size()), rst_s};
+    return rst;
+  }
+};
+
+struct butter {
+  int N, P, C;
+  vector<int> cows;
+  vector<vector<pll>> path;
+
+  vector<int> GetShortPath(int cow) {
+    auto cow_path = vector<int>(P, numeric_limits<int>::max());
+    // pair<dist, pasture>
+    auto pq = priority_queue<pll, vector<pll>, greater<>>{};
+    pq.push(make_pair(0, cows[cow]));
+
+    while (!pq.empty()) {
+      auto t = pq.top();
+      pq.pop();
+
+      if (cow_path[t.second] <= t.first)
+        continue;
+
+      cow_path[t.second] = t.first;
+
+      caf pasture_path = path[t.second];
+      for (auto &v : pasture_path) {
+        auto tmp = v.second + t.first;
+        if (tmp < cow_path[v.first]) {
+          pq.push(make_pair(tmp, v.first));
+        }
+      }
+    }
+    return cow_path;
+  }
+
+  void dfs(int cur_p, int dst, vector<int> &cow_path) {
+    if (cow_path[cur_p] <= dst)
+      return;
+
+    cow_path[cur_p] = dst;
+    for (auto &v : path[cur_p]) {
+      auto tmp = dst + v.second;
+      if (tmp < cow_path[v.first]) {
+        dfs(v.first, tmp, cow_path);
+      }
+    }
+  }
+
+  auto Solution(const vector<string> &lines) {
+    auto tmp = SplitLine<int>(lines.front());
+    N = tmp[0];
+    P = tmp[1] + 1;
+    C = tmp[2];
+
+    for (int i = 1; i <= N; i++) {
+      cows.push_back(stoi(lines[i]));
+    }
+
+    path = vector<vector<pll>>(P);
+    for (int i = N + 1; i < lines.size(); i++) {
+      auto tmp = SplitLine<int>(lines[i]);
+      path[tmp[0]].push_back(make_pair(tmp[1], tmp[2]));
+      path[tmp[1]].push_back(make_pair(tmp[0], tmp[2]));
+    }
+
+    auto mini_paths = vvi{};
+    for (int i = 0; i < cows.size(); i++) {
+      mini_paths.push_back(GetShortPath(i));
+
+      // dfs
+      // auto tmp = vector<int>(P, numeric_limits<int>::max());
+      // dfs(cows[i], 0, tmp);
+      // mini_paths.push_back(tmp);
+    }
+
+    auto rst = numeric_limits<ll>::max();
+    for (int i = 1; i < mini_paths.front().size(); i++) {
+      ll tmp = 0;
+      for (int j = 0; j < mini_paths.size(); j++) {
+        tmp += mini_paths[j][i];
+      }
+      rst = min(rst, tmp);
+    }
+
+    return vector<ll>{rst};
+  }
+};
+
 /*
 ID: racer
 TASK: hamming
