@@ -26,6 +26,7 @@ using namespace std;
 #define rep(i, a, b) for (int i = a; i < (b); ++i)
 #define all(x) begin(x), end(x)
 #define sz(x) (int)(x).size()
+#define mp make_pair
 #define f first
 #define s second
 #define getunique(v)                                                           \
@@ -4088,6 +4089,887 @@ struct butter {
     }
 
     return vector<ll>{rst};
+  }
+};
+
+struct fence {
+  map<int, map<int, int>> graph;
+  map<int, int> degree;
+  auto Solution(const vector<string> &lines) {
+    auto rst = vector<int>{};
+
+    for (int i = 1; i < lines.size(); i++) {
+      auto tmp = SplitLine<int>(lines[i]);
+      graph[tmp[0]][tmp[1]]++;
+      degree[tmp[0]]++;
+      graph[tmp[1]][tmp[0]]++;
+      degree[tmp[1]]++;
+    }
+
+    auto st = stack<int>{};
+    auto start = degree.begin()->first;
+    for (caf v : degree) {
+      if (v.second % 2 != 0) {
+        start = v.first;
+        break;
+      }
+    }
+
+    st.push(start);
+
+    while (!st.empty()) {
+      auto n = st.top();
+
+      auto &cnt = graph[n];
+      if (cnt.empty()) {
+        rst.push_back(n);
+        st.pop();
+      } else {
+        auto next = cnt.begin()->first;
+        st.push(next);
+
+        cnt[next]--;
+        if (cnt[next] == 0)
+          cnt.erase(next);
+
+        graph[next][n]--;
+
+        if (graph[next][n] == 0)
+          graph[next].erase(n);
+      }
+    }
+
+    reverse(all(rst));
+    return rst;
+  }
+};
+
+struct shopping {
+  vi goods;
+  vi buys;
+  vi buys_id;
+  vector<pair<int, unordered_map<int, int>>> offers;
+  unordered_map<string, int> key_map;
+
+  ll rst_v = numeric_limits<ll>::max();
+
+  ll CalLeft(const vi cur) {
+    ll tmp = 0;
+    for (int i = 0; i < cur.size(); i++) {
+      tmp += cur[i] * goods[buys_id[i]];
+    }
+    return tmp;
+
+    return 0;
+  }
+
+  void CalLeft(ll cur_v) {
+    auto tmp = cur_v;
+    for (int i = 0; i < buys.size(); i++) {
+      tmp += buys[i] * goods[i];
+    }
+
+    rst_v = min(rst_v, tmp);
+  };
+
+  void dfs(int start, ll cur_v) {
+    if (all_of(all(buys), [](auto &v) { return v == 0; })) {
+      rst_v = min(rst_v, cur_v);
+    }
+
+    if (start >= offers.size()) {
+
+      CalLeft(cur_v);
+      return;
+    }
+
+    for (int i = start; i < offers.size(); i++) {
+      if (all_of(all(offers[i].second),
+                 [this](auto &v) { return buys[v.first] >= v.second; })) {
+        for (caf v : offers[i].second)
+          buys[v.first] -= v.second;
+
+        dfs(i, cur_v + offers[i].first);
+
+        for (caf v : offers[i].second)
+          buys[v.first] += v.second;
+      }
+    }
+
+    CalLeft(cur_v);
+  }
+
+  ll bfs() {
+    struct Item {
+      ll pay = 0;
+      int state = 0;
+      vi cur_item;
+    };
+
+    auto cmp = [](const Item &a, const Item &b) { return a.pay < b.pay; };
+
+    auto pq = priority_queue<Item, vector<Item>, decltype(cmp)>(cmp);
+    auto first = Item{};
+    first.pay = 0;
+    first.state = 0;
+    first.cur_item = buys;
+
+    pq.push(first);
+
+    auto CalLeft = [this](const Item &cur) {
+      ll tmp = cur.pay;
+      for (int i = 0; i < cur.cur_item.size(); i++) {
+        tmp += cur.cur_item[i] * goods[i];
+      }
+      return tmp;
+    };
+
+    auto GetKey = [this](const Item &cur) {
+      auto tmp = int{0};
+      for (int i = 0; i < cur.cur_item.size(); i++) {
+        if (cur.cur_item[i] > 0) {
+          tmp = tmp * 10 + cur.cur_item[i];
+        }
+      }
+      return tmp;
+    };
+
+    auto mem = unordered_map<int, ll>{};
+
+    while (!pq.empty()) {
+      auto cur = pq.top();
+      pq.pop();
+      auto val = CalLeft(cur);
+      auto key = cur.state;
+      if (mem.find(key) != mem.end() && mem[key] < val)
+        continue;
+
+      mem[key] = val;
+
+      for (int i = 0; i < offers.size(); i++) {
+        if (all_of(all(offers[i].second), [this, &cur](auto &v) {
+              return cur.cur_item[v.first] >= v.second;
+            })) {
+
+          auto tmp = cur;
+
+          for (caf v : offers[i].second)
+            tmp.cur_item[v.first] -= v.second;
+
+          tmp.pay += offers[i].first;
+
+          tmp.state = GetKey(tmp);
+          auto tmp_v = CalLeft(tmp);
+          if (mem.find(tmp.state) != mem.end() && mem[tmp.state] < tmp_v)
+            continue;
+
+          pq.push(tmp);
+        }
+      }
+    }
+
+    for (caf v : mem) {
+      rst_v = min(rst_v, v.second);
+    }
+    return rst_v;
+  }
+
+  ll dp_table() {
+    ll dp[6][6][6][6][6][100];
+
+    auto mem = unordered_map<int, int>{};
+    auto default_v = numeric_limits<int>::max();
+
+    for (int a1 = 0; a1 <= buys[buys_id[0]]; a1++) {
+      for (int a2 = 0; a2 <= buys[buys_id[1]]; a2++) {
+        for (int a3 = 0; a3 <= buys[buys_id[2]]; a3++) {
+          for (int a4 = 0; a4 <= buys[buys_id[3]]; a4++) {
+            for (int a5 = 0; a5 <= buys[buys_id[4]]; a5++) {
+              mem[buys_id[0]] = a1;
+              mem[buys_id[1]] = a2;
+              mem[buys_id[2]] = a3;
+              mem[buys_id[3]] = a4;
+              mem[buys_id[4]] = a5;
+
+              for (int r = 0; r <= offers.size(); r++) {
+                // cout << a1 << a2 << a3 << a4 << a5 << endl;
+
+                if (r == 0) {
+                  auto tmp = CalLeft(vi{a1, a2, a3, a4, a5});
+                  dp[a1][a2][a3][a4][a5][r] = tmp > 0 ? tmp : default_v;
+                  // cout << "default=" << dp[a1][a2][a3][a4][a5][r] << endl;
+                  continue;
+                }
+
+                auto tmp = dp[a1][a2][a3][a4][a5][r - 1];
+                // cout << "r-1 tmp=" << tmp << endl;
+                caf offer = offers[r - 1];
+                if (all_of(all(offer.second), [this, &mem](auto &v) {
+                      return mem[v.first] >= v.second;
+                    })) {
+
+                  // cout << "loop:" << mem << endl;
+                  for (caf v : offer.second)
+                    mem[v.first] -= v.second;
+
+                  auto pre =
+                      dp[mem[buys_id[0]]][mem[buys_id[1]]][mem[buys_id[2]]]
+                        [mem[buys_id[3]]][mem[buys_id[4]]][r];
+
+                  if (pre != default_v) {
+                    tmp = min(tmp, pre + offer.first);
+                  } else {
+                    tmp = min(tmp, ll(offer.first));
+                  }
+
+                  // cout << "use offer =" << r << " , tmp=" << tmp << endl;
+                  for (caf v : offer.second)
+                    mem[v.first] += v.second;
+                }
+
+                dp[a1][a2][a3][a4][a5][r] = tmp;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    auto rst = dp[buys[buys_id[0]]][buys[buys_id[1]]][buys[buys_id[2]]]
+                 [buys[buys_id[3]]][buys[buys_id[4]]][offers.size()];
+    return rst == numeric_limits<int>::max() ? 0 : rst;
+  }
+
+  auto Solution(const vector<string> &lines) {
+    int N = stoi(lines[0]);
+    int i = 1;
+    for (; i <= N; i++) {
+      offers.emplace_back();
+      caf l = SplitLine<int>(lines[i]);
+
+      offers.back().first = l.back();
+      for (int j = 1; j <= 2 * l.front(); j += 2) {
+        offers.back().second[l[j]] = l[j + 1];
+      }
+    }
+    i++;
+    buys = vi(1000, 0);
+    goods = vi(1000, 0);
+    for (; i < lines.size(); i++) {
+      caf l = SplitLine<int>(lines[i]);
+      buys[l.front()] = l[1];
+      goods[l.front()] = l[2];
+      buys_id.push_back(l.front());
+    }
+
+    while (buys_id.size() < 5) {
+      buys_id.push_back(0);
+    }
+
+    // dfs(0, 0);
+    // bfs();
+    rst_v = dp_table();
+
+    return vector<ll>{rst_v};
+  }
+};
+
+struct camelot {
+  int R, C;
+  vector<pii> knights;
+  pii king;
+  vvi king_path;
+
+  vector<pii> Next(pii start) {
+    auto i = start.first;
+    auto j = start.second;
+    return {{i - 1, j - 2}, {i - 2, j - 1}, {i - 1, j + 2}, {i - 2, j + 1},
+            {i + 1, j - 2}, {i + 2, j - 1}, {i + 1, j + 2}, {i + 2, j + 1}};
+  }
+
+  vector<pii> KingNext(pii start) {
+    auto i = start.first;
+    auto j = start.second;
+    return {{i, j - 1},     {i, j + 1},     {i - 1, j - 1}, {i - 1, j},
+            {i - 1, j + 1}, {i + 1, j - 1}, {i + 1, j},     {i + 1, j + 1}};
+  }
+
+  vvi king_dfs(pii start) {
+    auto map = vvi(R, vi(C, imax));
+
+    struct Item {
+      int step;
+      pii point;
+    };
+
+    auto cmp = [](const Item &a, const Item &b) { return a.step > b.step; };
+    auto pq = priority_queue<Item, vector<Item>, decltype(cmp)>(cmp);
+    auto tmp = Item{};
+    tmp.step = 0;
+    tmp.point = start;
+    pq.push(tmp);
+
+    while (!pq.empty()) {
+      auto t = pq.top();
+      pq.pop();
+
+      if (map[t.point.first][t.point.second] <= t.step)
+        continue;
+
+      map[t.point.first][t.point.second] = t.step;
+
+      auto next_p = KingNext(t.point);
+      for (caf n : next_p) {
+        if (n.first < 0 || n.first >= R || n.second < 0 || n.second >= C) {
+          continue;
+        }
+        auto v = t.step + 1;
+        if (v < map[n.first][n.second]) {
+          auto tmp = Item{};
+          tmp.step = t.step + 1;
+          tmp.point = n;
+          pq.push(tmp);
+        }
+      }
+    }
+
+    return map;
+  }
+
+  using PATH = pair<vvi, vvi>;
+  vector<PATH> paths;
+
+  PATH dfs(pii start) {
+    auto map = vvi(R, vi(C, imax));
+    auto map_path = vvi(R, vi(C, imax));
+
+    struct Item {
+      int step;
+      int path;
+      pii point;
+    };
+
+    auto cmp = [](const Item &a, const Item &b) { return a.step > b.step; };
+    auto pq = priority_queue<Item, vector<Item>, decltype(cmp)>(cmp);
+    auto tmp = Item{};
+    tmp.step = 0;
+    tmp.path = king_path[start.first][start.second];
+    tmp.point = start;
+    pq.push(tmp);
+
+    while (!pq.empty()) {
+      auto t = pq.top();
+      pq.pop();
+
+      if (map[t.point.first][t.point.second] < t.step)
+        continue;
+
+      if (map[t.point.first][t.point.second] == t.step) {
+
+        map_path[t.point.first][t.point.second] =
+            min(map_path[t.point.first][t.point.second], t.path);
+
+        continue;
+      }
+
+      map[t.point.first][t.point.second] = t.step;
+      map_path[t.point.first][t.point.second] = t.path;
+
+      auto next_p = Next(t.point);
+      for (caf n : next_p) {
+        if (n.first < 0 || n.first >= R || n.second < 0 || n.second >= C) {
+          continue;
+        }
+        auto v = t.step + 1;
+        if (v <= map[n.first][n.second]) {
+          auto tmp = Item{};
+          tmp.step = v;
+          tmp.point = n;
+          tmp.path = min(t.path, king_path[n.first][n.second]);
+          pq.push(tmp);
+        }
+      }
+    }
+
+    return {map, map_path};
+  }
+
+  auto Solution(const vector<string> &lines) {
+    // get positions
+    auto tmp = SplitLine<int>(lines[0]);
+    R = tmp.front();
+    C = tmp.back();
+    auto k = SplitLine<string>(lines[1]);
+    king.first = stoi(k.back()) - 1;
+    king.second = k.front()[0] - 'A';
+
+    for (int i = 2; i < lines.size(); i++) {
+      auto tmp = SplitLine<string>(lines[i]);
+      for (int j = 0; j < tmp.size(); j += 2) {
+        auto v = make_pair(stoi(tmp[j + 1]) - 1, tmp[j][0] - 'A');
+        knights.push_back(v);
+      }
+    }
+
+    if (knights.empty())
+      return vector<int>{0};
+
+    king_path = king_dfs(king);
+
+    for (caf k : knights) {
+      paths.push_back(dfs(k));
+    }
+
+    auto map = vvi(R, vi(C, -1));
+    auto min_map = vvi(R, vi(C, imax));
+    rep(r, 0, R) {
+      rep(c, 0, C) {
+        auto tmp = 0;
+        auto good_to_go = true;
+        rep(k, 0, knights.size()) {
+          if (paths[k].first[r][c] == imax) {
+            good_to_go = false;
+            break;
+          }
+          tmp += paths[k].first[r][c];
+        }
+        if (good_to_go) {
+          map[r][c] = tmp;
+        }
+      }
+    }
+
+    auto rst = numeric_limits<int>::max();
+    rep(r, 0, R) {
+      rep(c, 0, C) {
+        if (map[r][c] == -1)
+          continue;
+
+        if (rst <= map[r][c])
+          continue;
+
+        auto tmp = king_path[r][c];
+
+        rep(k, 0, knights.size()) { tmp = min(tmp, paths[k].second[r][c]); }
+
+        rst = min(rst, tmp + map[r][c]);
+      }
+    }
+
+    return vector<int>{rst};
+  }
+};
+
+struct range {
+  vector<string> graph;
+  using Item = pair<pii, int>;
+  vector<pii> GetNext(const Item &v) {
+    auto rst = vector<pii>{};
+    auto n_i = v.first.first + v.second;
+    auto n_j = v.first.second + v.second;
+
+    rep(i, v.first.first, n_i) { rst.push_back({i, n_j}); }
+
+    rep(j, v.first.second, n_j) { rst.push_back({n_i, j}); }
+
+    rst.push_back({n_i, n_j});
+    return rst;
+  }
+
+  int GetMaxRange(Item t) {
+    auto next = GetNext(t);
+    while (!next.empty() && all_of(all(next), [this](const pii &v) {
+      if (v.first < 0 || v.first >= graph.size() || v.second < 0 ||
+          v.second >= graph.front().size())
+        return false;
+      return graph[v.first][v.second] == '1';
+    })) {
+      t.second++;
+      next = GetNext(t);
+    }
+    return t.second - 1;
+  };
+
+  map<int, int> dp_table() {
+    auto dp = vvi(graph.size(), vi(graph.front().size(), 0));
+    auto rst = map<int, int>{};
+    rep(i, 0, graph.size()) {
+      rep(j, 0, graph.front().size()) {
+        if (graph[i][j] == '0')
+          continue;
+
+        auto t = 1;
+        if (i != 0) {
+          t = max(t, dp[i - 1][j]);
+        }
+        if (j != 0) {
+          t = max(t, dp[i][j - 1]);
+        }
+        dp[i][j] = GetMaxRange({{i, j}, t});
+      }
+    }
+
+    rep(i, 0, graph.size()) {
+      rep(j, 0, graph.front().size()) {
+        for (int k = 1; k <= dp[i][j]; k++) {
+          rst[k + 1]++;
+        }
+      }
+    }
+    return rst;
+  }
+
+  auto Solution(const vector<string> &lines) {
+    for (int i = 1; i < lines.size(); i++) {
+      graph.push_back(lines[i]);
+    }
+    auto tmp_mem = dp_table();
+    auto rst = vector<string>{};
+    for (caf v : tmp_mem) {
+      rst.push_back(to_string(v.first) + " " + to_string(v.second));
+    }
+    return rst;
+  }
+};
+
+struct game1 {
+  vi nums;
+  vi acc_nums;
+  vvvi mem;
+  int N;
+
+  int GetSum(int i, int j) {
+    if (i == 0)
+      return acc_nums[j];
+    return acc_nums[j] - acc_nums[i - 1];
+  }
+
+  int dp(int x, int i, int j) {
+    if (x == 0)
+      return 0;
+
+    if (i == j)
+      return nums[i];
+
+    if (mem[x][i][j] != -1)
+      return mem[x][i][j];
+
+    auto v = max(nums[i] + GetSum(i + 1, j) - dp(x - 1, i + 1, j),
+                 nums[j] + GetSum(i, j - 1) - dp(x - 1, i, j - 1));
+
+    mem[x][i][j] = v;
+    return v;
+  }
+
+  int dp_table() {
+    auto dp_t = vector<vector<int>>(N + 1, vector<int>(N, 0));
+
+    for (int x = 1; x <= N; x++) {
+      for (int i = 0; i + x - 1 < N; i++) {
+        auto r = i + x - 1;
+        if (x == 1) {
+          dp_t[x][i] = nums[i];
+        } else {
+          dp_t[x][i] = max(nums[i] + GetSum(i + 1, r) - dp_t[x - 1][i + 1],
+                           nums[r] + GetSum(i, r - 1) - dp_t[x - 1][i]);
+        }
+      }
+    }
+
+    return dp_t[N][0];
+  }
+
+  auto Solution(const vector<string> &lines) {
+    for (int i = 1; i < lines.size(); i++) {
+      for (caf v : SplitLine<int>(lines[i])) {
+        nums.push_back(v);
+      }
+    }
+    N = nums.size();
+
+    acc_nums.push_back(nums.front());
+    for (int i = 1; i < nums.size(); i++) {
+      acc_nums.push_back(acc_nums.back() + nums[i]);
+    }
+
+    // dp function
+    //  mem = vvvi(N + 1, vvi(N + 1, vi(N + 1, -1)));
+    //  auto A = dp(nums.size(), 0, nums.size() - 1);
+
+    // dp_table
+    auto A = dp_table();
+
+    auto rst = vector<string>{to_string(A) + " " +
+                              to_string(GetSum(0, nums.size() - 1) - A)};
+    return rst;
+  }
+};
+
+struct heritage {
+  template <typename T> struct TreeNode {
+    T val;
+    TreeNode *left;
+    TreeNode *right;
+
+    TreeNode() : val(T{}), left(nullptr), right(nullptr) {}
+
+    TreeNode(T x) : val(x), left(nullptr), right(nullptr) {}
+
+    TreeNode(T x, TreeNode *left, TreeNode *right)
+        : val(x), left(left), right(right) {}
+  };
+
+  string IN;
+  string PRE;
+  TreeNode<char> root;
+
+  auto build(int in_l, int in_r, int pre_l, int pre_r) -> TreeNode<char> * {
+    if (pre_l == pre_r)
+      return nullptr;
+
+    auto r = PRE[pre_l];
+    auto c_r = new TreeNode(r);
+    auto dst = distance(IN.begin() + in_l,
+                        find(IN.begin() + in_l, IN.begin() + in_r, r));
+    c_r->left = build(in_l, in_l + dst, pre_l + 1, pre_l + dst + 1);
+    c_r->right = build(in_l + dst + 1, in_r, pre_l + dst + 1, pre_r);
+    c_r->val = r;
+    return c_r;
+  }
+
+  string PostOrder(TreeNode<char> *root) {
+    if (root == nullptr)
+      return "";
+    auto rst = string{};
+    rst += PostOrder(root->left);
+    rst += PostOrder(root->right);
+    rst += string(1, root->val);
+    return rst;
+  }
+
+  auto Solution(const vector<string> &lines) {
+    IN = lines.front();
+    PRE = lines.back();
+    root = *build(0, IN.size(), 0, PRE.size());
+
+    auto rst = vector<string>{PostOrder(&root)};
+    return rst;
+  }
+};
+
+struct fence9 {
+  auto InTriangleV1(pii v, pii v0, pii v1, pii v2) -> bool {
+    auto det = [](pii v1, pii v2) -> int {
+      return v1.first * v2.second - v1.second * v2.first;
+    };
+
+    auto a = (det(v, v2) - det(v0, v2)) / double(det(v1, v2));
+    auto b = -(det(v, v1) - det(v0, v1)) / double(det(v1, v2));
+    if (a > 0 && b > 0 && a + b < 1)
+      return true;
+
+    return false;
+  }
+
+  auto inTriangle(pii v, pii v0, pii v1, pii v2) -> bool {
+    // do not finish
+    auto CrossProduct = [](pii a, pii b) {
+      return a.first * b.second - a.second * b.first;
+    };
+    auto SameSide = [](pii p1, pii p2, pii a, pii b) { return false; };
+
+    return false;
+  }
+
+  auto Solution(const vector<string> &lines) {
+    auto tmp = SplitLine<int>(lines.front());
+    auto v0 = make_pair(0, 0);
+    auto v1 = make_pair(tmp[0], tmp[1]);
+    auto v2 = make_pair(tmp[2], 0);
+    double a1 = double(v1.second) / v1.first;
+    double a2 = double(v1.second) / (v1.first - v2.first);
+    double b2 = double(v1.second * v2.first) / (v2.first - v1.first);
+
+    auto acc = int{0};
+
+    if (v1.first <= v2.first) {
+      for (int i = 1; i < v2.first; i++) {
+        auto v = int{0};
+        if ((i <= v1.first)) {
+          v = int(a1 * i);
+        } else {
+          v = int(a2 * i + b2);
+        }
+
+        if (v <= 0)
+          continue;
+        if (InTriangleV1(make_pair(i, v), v0, v1, v2)) {
+          acc += v;
+        } else {
+          acc += v - 1;
+        }
+      }
+    } else {
+      for (int i = 1; i < v1.first; i++) {
+        if ((i < v2.first)) {
+          // acc += int(ceil(a1 * i - 1));
+          auto v = int(a1 * i);
+          if (v <= 0)
+            continue;
+          if (InTriangleV1(make_pair(i, v), v0, v1, v2)) {
+            acc += v;
+          } else {
+            acc += v - 1;
+          }
+        } else
+          for (int y = int(a2 * i + b2); y <= int(a1 * i); y++) {
+            if (y <= 0)
+              continue;
+            if (InTriangleV1(make_pair(i, y), v0, v1, v2)) {
+              acc++;
+            }
+          }
+      }
+    }
+
+    return vector<int>{acc};
+  }
+};
+
+struct rockers {
+  vvvi dp;
+
+  auto Solution(const vector<string> &lines) {
+    auto tmp = SplitLine<int>(lines.front());
+    auto N = tmp[0];
+    auto T = tmp[1];
+    auto M = tmp[2];
+    auto Len = SplitLine<int>(lines.back());
+    dp = vvvi(N + 1, vvi(M + 1, vi(T + 1, 0)));
+    for (int i = 0; i <= N; i++) {
+      for (int j = 0; j <= M; j++) {
+        for (int k = 0; k <= T; k++) {
+          if (i == 0 || j == 0) {
+            dp[i][j][k] = 0;
+            continue;
+          }
+          auto l = Len[i - 1];
+
+          dp[i][j][k] = dp[i - 1][j][k];
+          if (l <= k) {
+            dp[i][j][k] = max(dp[i][j][k], 1 + dp[i - 1][j][k - l]);
+          } else if (j > 1 && l <= T) {
+            dp[i][j][k] = max(dp[i][j][k], 1 + dp[i - 1][j - 1][T - l]);
+          }
+        }
+      }
+    }
+
+    auto rst = vector<int>{dp[N][M][T]};
+    return rst;
+  }
+};
+
+struct nuggets {
+  vector<int> nums;
+  vector<vector<bool>> nums_dp;
+  const int LIMIT = 65024;
+
+  auto Solution(const vector<string> &lines) {
+    rep(i, 1, lines.size()) { nums.push_back(stoi(lines[i])); }
+    // cout << nums << endl;
+    nums_dp =
+        vector<vector<bool>>(nums.size(), vector<bool>(LIMIT + 1000, false));
+    for (int i = 0; i < nums_dp.size(); i++) {
+      caf v = nums[i];
+      for (int j = 0; j < nums_dp.front().size(); j++) {
+        if (j == v) {
+          nums_dp[i][j] = true;
+          continue;
+        } else {
+          if (j >= v) {
+            nums_dp[i][j] = nums_dp[i][j] || nums_dp[i][j - v];
+          }
+          if (i > 0) {
+            nums_dp[i][j] = nums_dp[i][j] || nums_dp[i - 1][j];
+          }
+        }
+      }
+    }
+    auto last = int{};
+    for (int j = 0; j < nums_dp.front().size(); j++) {
+      if (nums_dp.back()[j] == false) {
+        last = j;
+      }
+    }
+    last = last > LIMIT ? 0 : last;
+    auto rst = vector<int>{last};
+    return rst;
+  }
+};
+
+struct fence6 {
+  vector<unordered_map<int, int>> graph{};
+  vector<int> lens{};
+
+  auto Solution(const vector<string> &lines) {
+    auto N = stoi(lines.front());
+
+    graph = vector<unordered_map<int, int>>(N);
+    lens = vi(N);
+
+    for (int i = 1; i < lines.size(); i += 3) {
+      auto tmp = SplitLine<int>(lines[i]);
+      auto index = tmp[0] - 1;
+      lens[index] = tmp[1];
+      for (caf v : SplitLine<int>(lines[i + 1])) {
+        graph[index][v - 1] = 0;
+      };
+
+      for (caf v : SplitLine<int>(lines[i + 2])) {
+        graph[index][v - 1] = 1;
+      };
+    }
+
+    auto rst = imax;
+
+    rep(i, 0, graph.size()) {
+      auto visited = vi(graph.size(), imax);
+
+      auto pq =
+          priority_queue<pair<int, pii>, vector<pair<int, pii>>, greater<>>{};
+
+      for (caf l : graph[i]) {
+        pq.push(mp(lens[l.f], mp(i, l.f)));
+
+        while (!pq.empty()) {
+          auto t = pq.top();
+          pq.pop();
+
+          if (t.s.s == i)
+            rst = min(rst, t.first);
+          else {
+            if (visited[t.s.s] <= t.f)
+              continue;
+            visited[t.s.s] = t.f;
+
+            auto next_i = graph[t.s.s][t.s.f] == 0 ? 1 : 0;
+            for (caf v : graph[t.s.s]) {
+              if (v.s != next_i)
+                continue;
+
+              auto tmp = t.first + lens[v.f];
+
+              if (tmp >= visited[v.f] || tmp >= rst)
+                continue;
+
+              pq.push(mp(tmp, mp(t.s.s, v.f)));
+            }
+          }
+        }
+      }
+    }
+    return vector<int>{rst};
   }
 };
 
