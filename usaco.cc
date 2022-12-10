@@ -4973,6 +4973,1074 @@ struct fence6 {
   }
 };
 
+class MaxFlow {
+  vvi graph;
+
+  ll bfs(int src, int dst, vi &parent) {
+    fill(all(parent), -1);
+    parent[src] = -2;
+
+    auto q = queue<pair<int, ll>>{};
+    q.push(mp(src, imax));
+
+    while (!q.empty()) {
+      auto cur = q.front().f;
+      auto cur_flow = q.front().s;
+      q.pop();
+
+      if (cur == dst)
+        return cur_flow;
+
+      for (int i = 0; i < graph.size(); i++) {
+        if (parent[i] == -1 && graph[cur][i] > 0) {
+          parent[i] = cur;
+          q.push(mp(i, min(cur_flow, (ll)graph[cur][i])));
+        }
+      }
+    }
+    return 0;
+  }
+
+public:
+  ll Get(const vvi &matrix) {
+    graph = matrix;
+    ll max_flow = 0;
+    ll cur_flow = 0;
+
+    auto dst = graph.size() - 1;
+    auto parent = vi(graph.size());
+
+    cur_flow = bfs(0, dst, parent);
+    while (cur_flow > 0) {
+      max_flow += cur_flow;
+
+      auto cur = dst;
+      while (cur != 0) {
+        auto pre = parent[cur];
+        graph[pre][cur] -= cur_flow;
+        graph[cur][pre] += cur_flow;
+        cur = pre;
+      }
+
+      cur_flow = bfs(0, dst, parent);
+    }
+    return max_flow;
+  }
+};
+
+struct ditch {
+  auto Solution(const vector<string> &lines) {
+    auto tmp = SplitLine<int>(lines.front());
+    auto M = tmp.back();
+    auto matrix = vvi(M, vi(M, 0));
+    for (int i = 1; i < lines.size(); i++) {
+      auto tmp = SplitLine<int>(lines[i]);
+      matrix[tmp[0] - 1][tmp[1] - 1] += tmp.back();
+    }
+    auto rst = MaxFlow().Get(matrix);
+    return vector<ll>{rst};
+  }
+};
+
+struct stall4 {
+  auto Solution(const vector<string> &lines) {
+    auto tmp = SplitLine<int>(lines.front());
+    auto N = tmp.front();
+    auto M = tmp.back();
+
+    auto matrix = vvi(N + M + 2, vi(N + M + 2, 0));
+    for (int i = 1; i < lines.size(); i++) {
+      auto tmp = SplitLine<int>(lines[i]);
+      for (int j = 1; j < tmp.size(); j++) {
+        matrix[i][N + tmp[j]] += 1;
+      }
+    }
+
+    for (int i = 1; i <= N; i++) {
+      matrix[0][i] = 1;
+    }
+
+    for (int i = N + 1; i <= N + M + 1; i++) {
+      matrix[i].back() = 1;
+    }
+
+    auto rst = vector<ll>{MaxFlow().Get(matrix)};
+    return rst;
+  }
+};
+
+struct job {
+  pii Solution1(int N, const vi &A, const vi &B) {
+    auto cmp = [](const pii &a, const pii &b) {
+      auto t1 = (a.first + a.second);
+      auto t2 = (b.first + b.second);
+      if (t1 == t2)
+        return a.first > b.first;
+      return t1 > t2;
+    };
+
+    auto AQ = priority_queue<pii, vector<pii>, decltype(cmp)>(cmp);
+    using Item = pair<int, vi>;
+    auto BQ = vector<Item>{};
+
+    auto Print = [](decltype(AQ) q) {
+      while (!q.empty()) {
+        cout << q.top() << endl;
+        q.pop();
+      }
+    };
+
+    for (caf v : A) {
+      AQ.push({v, 0});
+    }
+
+    for (caf v : B) {
+      BQ.push_back({v, {}});
+    }
+
+    sort(all(BQ), [](auto a, auto b) { return a.first < b.first; });
+
+    auto Note = vi{};
+
+    auto rst_A = 0;
+    for (int i = 0; i < N; i++) {
+      auto t = AQ.top();
+      AQ.pop();
+
+      t.second += t.first;
+      AQ.push(t);
+
+      Note.push_back(t.second);
+      rst_A = max(rst_A, t.second);
+    }
+
+    sort(all(Note), greater<>());
+
+    auto GetTimeAfterInsert = [](const Item &m, int v) {
+      if (m.second.empty())
+        return v + m.first;
+      if (v + m.first <= m.s.back())
+        return m.s.front();
+      else {
+        auto tmp = v + m.f;
+        for (int i = m.s.size() - 1; i >= 1; i--) {
+          tmp = max(tmp, m.s[i]) + m.f;
+        }
+        return max(m.s.front(), tmp);
+      }
+    };
+
+    for (caf v : Note) {
+      auto insert = min_element(all(BQ), [&, v](caf a, caf b) {
+        auto va = GetTimeAfterInsert(a, v);
+        auto vb = GetTimeAfterInsert(b, v);
+        return va < vb;
+      });
+
+      auto after_i = GetTimeAfterInsert(*insert, v);
+      if (insert->second.empty()) {
+        insert->second.push_back(after_i);
+        insert->second.push_back(v);
+      } else {
+        insert->second.push_back(v);
+        insert->second.front() = after_i;
+      }
+    }
+
+    auto rst_B = 0;
+    for (caf v : BQ) {
+      if (!v.second.empty())
+        rst_B = max(rst_B, v.second.front());
+    }
+
+    return {rst_A, rst_B};
+  }
+
+  pii Solution2(int N, const vi &A, const vi &B) {
+    auto next_A = A;
+    auto next_B = B;
+    auto Middle = vi{};
+    rep(i, 0, N) {
+      auto tmp = 0;
+      rep(j, 0, A.size()) {
+        if (next_A[tmp] > next_A[j]) {
+          tmp = j;
+        }
+      }
+      Middle.push_back(next_A[tmp]);
+      next_A[tmp] += A[tmp];
+    }
+
+    sort(all(Middle), greater<>());
+
+    auto rst_A = Middle.front();
+    auto rst_B = 0;
+    rep(i, 0, N) {
+      int tmp = 0;
+      rep(j, 0, B.size()) {
+        if (Middle[i] + next_B[tmp] > Middle[i] + next_B[j]) {
+          tmp = j;
+        }
+      }
+      rst_B = max(rst_B, Middle[i] + next_B[tmp]);
+      next_B[tmp] += B[tmp];
+    }
+
+    return {rst_A, rst_B};
+  }
+
+  auto Solution(const vector<string> &lines) {
+    auto tmp = SplitLine<int>(lines.front());
+    auto N = tmp[0];
+    auto A = tmp[1];
+    auto B = tmp[2];
+
+    caf AN = SplitLine<int>(lines[1]);
+    caf BN = SplitLine<int>(lines[2]);
+
+    // auto [rst_A, rst_B] = Solution1(N, AN, BN);
+    auto [rst_A, rst_B] = Solution2(N, AN, BN);
+    auto rst = vector<string>{to_string(rst_A) + " " + to_string(rst_B)};
+    return rst;
+  }
+};
+
+class BigNumber {
+private:
+  const int base = 1000 * 1000 * 1000;
+
+public:
+  vector<int> a;
+
+  BigNumber() : a() {}
+  BigNumber(const BigNumber &other) = default;
+  BigNumber(BigNumber &&other) = default;
+
+  BigNumber &operator=(const BigNumber &other) {
+    this->a = other.a;
+    return *this;
+  };
+  BigNumber &operator=(BigNumber &&other) {
+    this->a = std::move(other.a);
+    return *this;
+  };
+
+  BigNumber &operator-(const BigNumber &other) {
+    this->Sub(other);
+    return *this;
+  }
+
+  BigNumber &operator+(const BigNumber &other) {
+    this->Add(other);
+    return *this;
+  }
+
+  BigNumber(const string &s) : a() {
+    for (int i = (int)s.length(); i > 0; i -= 9)
+      if (i < 9)
+        a.push_back(atoi(s.substr(0, i).c_str()));
+      else
+        a.push_back(atoi(s.substr(i - 9, 9).c_str()));
+
+    while (a.size() > 1 && a.back() == 0)
+      a.pop_back();
+  }
+
+  int Compare(const BigNumber &other) {
+    const auto &b = other.a;
+    auto i = max((int)a.size(), (int)b.size()) - 1;
+    for (; i >= 0; --i) {
+      if (a.size() < i + 1)
+        return -1;
+      else if (b.size() < i + 1)
+        return 1;
+      else {
+        if (a[i] == b[i])
+          continue;
+        else {
+          if (a[i] < b[i])
+            return -1;
+          if (a[i] > b[i])
+            return 1;
+        }
+      }
+    }
+    return 0;
+  }
+
+  void Add(const BigNumber &other) {
+    const auto &b = other.a;
+    int carry = 0;
+    for (size_t i = 0; i < max(a.size(), b.size()) || carry; ++i) {
+      if (i == a.size())
+        a.push_back(0);
+      a[i] += carry + (i < b.size() ? b[i] : 0);
+      carry = a[i] >= base;
+      if (carry)
+        a[i] -= base;
+    }
+  }
+  void Sub(const BigNumber &other) {
+    const auto &b = other.a;
+    int carry = 0;
+    for (size_t i = 0; i < b.size() || carry; ++i) {
+
+      a[i] -= carry + (i < b.size() ? b[i] : 0);
+
+      carry = a[i] < 0;
+
+      if (carry)
+        a[i] += base;
+    }
+
+    while (a.size() > 1 && a.back() == 0)
+      a.pop_back();
+  }
+
+  string to_string() const {
+    auto rst = ostringstream();
+    if (a.empty()) {
+      rst << 0;
+    } else {
+      rst << a.back();
+    }
+
+    for (int i = (int)a.size() - 2; i >= 0; --i)
+      rst << setfill('0') << std::setw(9) << a[i];
+    return rst.str();
+  }
+};
+
+struct Solve {
+  int N = 0;
+  vector<int> nums;
+
+  auto dp_table() {
+    // to slow
+    struct Item {
+      unordered_set<string> val;
+      int len;
+    };
+
+    auto dp = vector<Item>(N);
+
+    dp[0].val = unordered_set<string>{to_string(nums[0])};
+    dp[0].len = 1;
+
+    rep(i, 1, dp.size()) {
+      auto tmp_v = to_string(nums[i]);
+      dp[i].val = unordered_set<string>{tmp_v};
+      dp[i].len = 1;
+      rep(j, 0, i) {
+        if (nums[i] < nums[j]) {
+          auto &cur = dp[i];
+          caf pre = dp[j];
+          if (cur.len <= pre.len + 1) {
+            if (cur.len < pre.len + 1) {
+              cur.val.clear();
+              cur.len = pre.len + 1;
+            }
+
+            for (caf v : pre.val) {
+              cur.val.insert(v + "#" + tmp_v);
+            }
+          }
+        }
+      }
+    }
+
+    auto rst = 0;
+    auto rst_N = unordered_set<string>{};
+    for (caf v : dp) {
+      if (v.len == rst) {
+        for (caf v : v.val) {
+          rst_N.insert(v);
+        }
+      } else if (v.len > rst) {
+        rst = v.len;
+        rst_N = v.val;
+      }
+    }
+    return vector<string>{to_string(rst) + " " + to_string(rst_N.size())};
+  }
+
+  auto dp_table2() {
+    // has bug
+    auto mem = map<int, vector<int>>{};
+    rep(i, 0, nums.size()) { mem[nums[i]].push_back(i); }
+    auto prices = vector<vector<int>>{};
+    for (caf v : mem) {
+      prices.push_back(v.second);
+    }
+    reverse(all(prices));
+
+    auto dp = vector<vector<pair<int, BigNumber>>>(prices.size());
+    for (caf v : prices.front()) {
+      dp[0].push_back(pair<int, BigNumber>{1, BigNumber("1")});
+    }
+
+    auto rst = pair<int, BigNumber>{1, BigNumber("1")};
+
+    rep(i, 1, prices.size()) {
+      auto tmp_i = pair<int, BigNumber>{1, BigNumber("1")};
+      rep(j, 0, prices[i].size()) {
+        dp[i].push_back(pair<int, BigNumber>{1, BigNumber("1")});
+
+        rep(k, 0, i) {
+          auto tmp = pair<int, BigNumber>{1, BigNumber("1")};
+          rep(m, 0, prices[k].size()) {
+            if (prices[i][j] > prices[k][m]) {
+              if (tmp.f < dp[k][m].f + 1) {
+                tmp.f = dp[k][m].f + 1;
+                tmp.s = dp[k][m].s;
+              }
+            } else {
+              break;
+            }
+          }
+
+          // Update(tmp, dp[i][j]);
+          auto &cur = dp[i][j];
+
+          if (tmp.f > cur.f) {
+            cur.f = tmp.f;
+            cur.s = tmp.s;
+          } else if (tmp.f == cur.f && tmp.f > 1) {
+            cur.s.Add(tmp.s);
+            // cur tmp.s;
+          }
+        }
+
+        // Update(dp[i][j], tmp_i);
+        caf tmp = dp[i][j];
+        auto &cur = tmp_i;
+
+        if (tmp.f > cur.f) {
+          cur.f = tmp.f;
+          cur.s = tmp.s;
+        } else if (tmp.f == cur.f && tmp.f > 1) {
+          cur.s = cur.s.Compare(tmp.s) == 1 ? cur.s : tmp.s;
+        }
+      }
+
+      if (tmp_i.f > rst.f) {
+        rst.f = tmp_i.f;
+        rst.s = tmp_i.s;
+      } else if (tmp_i.f == rst.f) {
+        rst.s.Add(tmp_i.s);
+      }
+    }
+    return vector<string>{to_string(rst.f) + " " + rst.s.to_string()};
+  }
+
+  auto dp_table3() {
+    auto dp = vector<BigNumber>(N, BigNumber("1"));
+    auto seq_num = vector<BigNumber>(N, BigNumber("1"));
+    auto One = BigNumber("1");
+
+    auto rst = size_t{0};
+    rep(i, 1, dp.size()) {
+      rep(j, 0, i) {
+        if (nums[i] < nums[j]) {
+          auto cmp = dp[i].Compare(dp[j]);
+          if (cmp == -1 || cmp == 0) {
+            dp[i] = dp[j];
+            dp[i].Add(One);
+          }
+        }
+      }
+      if (dp[i].Compare(dp[rst]) == 1) {
+        rst = i;
+      }
+    }
+
+    rep(i, 1, dp.size()) {
+      if (dp[i].Compare(One) == 0)
+        continue;
+
+      auto goal = dp[i];
+      goal.Sub(One);
+      auto last = -1;
+
+      seq_num[i] = BigNumber{};
+
+      rrep(j, i - 1, 0) {
+        if (nums[j] > nums[i] && nums[j] != last && dp[j].Compare(goal) == 0) {
+          seq_num[i].Add(seq_num[j]);
+          last = nums[j];
+        }
+      }
+    }
+
+    // cout << dp.size() << endl;
+    // cout << dp[rst].to_string() << endl;
+    // for (caf v : seq_num) {
+    //   cout << v.to_string() << endl;
+    // }
+
+    auto last = -1;
+    auto sum = BigNumber();
+    rrep(i, nums.size() - 1, 0) {
+      if (dp[i].Compare(dp[rst]) == 0 && last != nums[i]) {
+        sum.Add(seq_num[i]);
+        last = nums[i];
+      }
+    }
+
+    return vector<string>{(dp[rst].to_string()) + " " + sum.to_string()};
+  }
+
+  auto Solution(const vector<string> &lines) {
+    N = stoi(lines.front());
+    nums = vector<int>();
+    rep(i, 1, lines.size()) {
+      for (caf v : SplitLine<int>(lines[i]))
+        nums.push_back(v);
+    }
+    // return dp_table();
+    // return dp_table2();
+    return dp_table3();
+  }
+};
+
+struct race3 {
+  int N;
+  vvb graph;
+  vb visited;
+  vb visited_acc;
+  vi visit_num;
+  int limit;
+  int path_num = 0;
+
+  void dfs(int last, int start, vi &path) {
+    if (start == last) {
+      if (limit == 1000000) {
+        cout << "0\n0" << endl;
+        exit(0);
+      } else {
+        limit++;
+      }
+      for (caf v : path) {
+        visit_num[v]++;
+      }
+      path_num++;
+      return;
+    }
+
+    if (visited[start])
+      return;
+
+    visited[start] = true;
+    visited_acc[start] = true;
+    path.push_back(start);
+    for (int i = 0; i < N; i++) {
+      if (graph[start][i]) {
+        dfs(last, i, path);
+      }
+    }
+    path.pop_back();
+    visited[start] = false;
+  }
+
+  vi GetCommonNode() {
+    vi rst;
+    for (int i = 1; i < N - 1; i++) {
+      if (visit_num[i] == path_num) {
+        rst.push_back(i);
+      }
+    }
+    return rst;
+  }
+
+  vi GetSplitNode(const vi &sp) {
+    auto rst = vi{};
+
+    auto Run = [this](int start, int last) {
+      visited = vb(N, false);
+      visited_acc = vb(N, false);
+      auto path = vi{};
+      dfs(last, start, path);
+      return visited_acc;
+    };
+
+    for (caf v : sp) {
+      auto v_next = graph[v];
+      rep(i, 0, N) graph[v][i] = false;
+      auto left = Run(0, v);
+      graph[v] = v_next;
+
+      auto pre_v = vb(N, false);
+      rep(i, 0, N) {
+        pre_v[i] = graph[i][v];
+        graph[i][v] = false;
+      }
+      auto right = Run(v, N - 1);
+      rep(i, 0, N) { graph[i][v] = pre_v[i]; }
+
+      auto good = true;
+      rep(j, 0, N) {
+        if (left[j] && right[j] && v != j) {
+          good = false;
+          break;
+        }
+      }
+      if (good)
+        rst.push_back(v);
+    }
+    return rst;
+  }
+
+  auto Solution(const vector<string> &lines) {
+    N = lines.size() - 1;
+
+    if (N < 3) {
+      return vector<string>{"0", "0"};
+    }
+
+    graph = vvb(N, vb(N, false));
+    rep(i, 0, N) {
+      auto tmp = SplitLine<int>(lines[i]);
+      rep(j, 0, tmp.size() - 1) { graph[i][tmp[j]] = true; }
+    }
+
+    vi path;
+    visited = vb(N, false);
+    visit_num = vi(N, 0);
+    visited_acc = vb(N, false);
+    dfs(N - 1, 0, path);
+
+    auto rst1 = GetCommonNode();
+    auto rst2 = GetSplitNode(rst1);
+
+    auto rst = vector<string>{to_string(rst1.size()) + " " + Join(rst1, " ")};
+
+    if (rst2.empty()) {
+      rst.push_back("0");
+    } else {
+      rst.push_back(to_string(rst2.size()) + " " + Join(rst2, " "));
+    }
+    return rst;
+  }
+};
+
+struct lgame {
+  struct Node {
+    char key;
+    bool is_end = false;
+    int value = 0;
+    vector<Node *> next = vector<Node *>(26, nullptr);
+  };
+
+  vi value = {2, 5, 4, 4, 1, 6, 5, 5, 1, 7, 6, 3, 5,
+              2, 3, 5, 7, 2, 1, 2, 4, 6, 6, 7, 5, 7};
+
+  vector<string> dict;
+  vi choose;
+  map<int, vector<int>> mem;
+  int max_v = 0;
+
+  void Add(Node *root, int index, int i) {
+    const string &s = dict[index];
+    if (i == s.size()) {
+      root->is_end = true;
+      mem[root->value].push_back(index);
+      max_v = max(max_v, root->value);
+      return;
+    }
+
+    auto j = s[i] - 'a';
+    if (root->next[j] == nullptr) {
+      auto tmp = new Node();
+      tmp->key = s[i];
+      tmp->value = root->value + value[j];
+
+      root->next[j] = tmp;
+    }
+
+    if (choose[j] == 0)
+      return;
+
+    choose[j]--;
+    Add(root->next[j], index, i + 1);
+    choose[j]++;
+  }
+
+  auto Combine(const string &a, const string &b) {
+    if (a > b) {
+      return pair<string, string>{b, a};
+    } else {
+      return pair<string, string>{a, b};
+    }
+  }
+
+  auto Solution(const vector<string> &lines) {
+#ifdef __clang__
+    dict = ReadAllFileLines("/tmp/lgame.dict");
+#else
+    dict = ReadAllFileLines("lgame.dict");
+#endif
+    dict.pop_back();
+    choose = vi(26, 0);
+    for (caf v : lines.front()) {
+      choose[v - 'a']++;
+    }
+    auto root = new Node();
+
+    rep(i, 0, dict.size()) { Add(root, i, 0); }
+
+    auto rst = vector<pair<string, string>>{};
+    auto rst_v = 0;
+
+    auto GetList = [this, &rst, &rst_v]() {
+      for (auto iter = mem.rbegin(); iter != mem.rend(); iter++) {
+        caf left = *iter;
+
+        if (left.first >= rst_v) {
+          if (left.first > rst_v) {
+            rst_v = left.first;
+            rst.clear();
+          }
+
+          for (caf v : left.second)
+            rst.push_back({dict[v], ""});
+        }
+        for (auto r_iter = iter; r_iter != mem.rend(); r_iter++) {
+          caf right = *r_iter;
+          const auto cur_v = right.first + left.first;
+          for (caf l : left.second) {
+            auto tmp = vector<int>(26, 0);
+            for (caf v : dict[l]) {
+              tmp[v - 'a']++;
+            }
+            for (caf r : right.second) {
+              auto next = tmp;
+              auto good = true;
+              for (caf v : dict[r]) {
+                next[v - 'a']++;
+                if (next[v - 'a'] > choose[v - 'a']) {
+                  good = false;
+                  break;
+                }
+              }
+
+              if (!good)
+                continue;
+
+              if (cur_v >= rst_v) {
+                if (cur_v > rst_v) {
+                  rst_v = cur_v;
+                  rst.clear();
+                }
+                rst.push_back(Combine(dict[l], dict[r]));
+              }
+            }
+          }
+        }
+      }
+    };
+
+    auto org_max_v = 0;
+    rep(i, 0, choose.size()) { org_max_v += choose[i] * value[i]; }
+
+    GetList();
+
+    sort(all(rst), [](caf a, caf b) {
+      if (a.first != b.first)
+        return a.first < b.first;
+      else {
+        if (a.second.empty() || b.second.empty())
+          return b.second.empty() ? true : false;
+        return a.second < b.second;
+      }
+    });
+
+    auto tmp = vector<string>{to_string(rst_v)};
+    for (caf v : rst) {
+      if (v.second.empty()) {
+        tmp.push_back(v.first);
+      } else {
+        tmp.push_back(v.first + " " + v.second);
+      }
+    }
+    return tmp;
+  }
+};
+
+struct shuttle {
+  int N;
+  string start;
+  string target;
+  vector<int> rst_path;
+  int Distance(const string &cur) {
+    int b = 0;
+    int w = N + 1;
+    int rst = 0;
+    rep(i, 0, cur.size()) {
+      if (cur[i] == 'B') {
+        rst += (i - b);
+        b++;
+      }
+      if (cur[i] == 'W') {
+        rst += (w - i);
+        w++;
+      }
+    }
+    return rst;
+  }
+
+  void dfs(int space, int pre_dst, string &cur, vector<int> &path) {
+    auto dst = Distance(cur);
+    if (pre_dst <= dst) {
+      return;
+    }
+    // cout << cur << endl;
+
+    if (cur == target) {
+      if (!rst_path.empty()) {
+        if (path.size() > rst_path.size())
+          return;
+        if (path.size() == rst_path.size()) {
+          rep(i, 0, path.size()) {
+            if (rst_path[i] < path[i])
+              return;
+          }
+        }
+      }
+
+      rst_path = path;
+      // cout << "update" << rst_path << endl;
+      return;
+    }
+
+    if (space > 0) {
+      swap(cur[space - 1], cur[space]);
+      path.push_back(space - 1);
+      dfs(space - 1, dst, cur, path);
+      path.pop_back();
+      swap(cur[space - 1], cur[space]);
+    }
+
+    if (space < cur.size() - 1) {
+      swap(cur[space + 1], cur[space]);
+      path.push_back(space + 1);
+      dfs(space + 1, dst, cur, path);
+      path.pop_back();
+      swap(cur[space + 1], cur[space]);
+    }
+
+    if (space > 1 && cur[space - 2] != cur[space - 1]) {
+      swap(cur[space - 2], cur[space]);
+      path.push_back(space - 2);
+      dfs(space - 2, dst, cur, path);
+      path.pop_back();
+      swap(cur[space - 2], cur[space]);
+    }
+
+    if (space < cur.size() - 2 && (cur[space + 2] != cur[space + 1])) {
+      swap(cur[space + 2], cur[space]);
+      path.push_back(space + 2);
+      dfs(space + 2, dst, cur, path);
+      path.pop_back();
+      swap(cur[space + 2], cur[space]);
+    }
+  }
+
+  auto Solution(const vector<string> &lines) {
+    N = stoi(lines.front());
+    start = string(N, 'W') + " " + string(N, 'B');
+    target = string(N, 'B') + " " + string(N, 'W');
+    vi path;
+    dfs(N, imax, start, path);
+    for (auto &v : rst_path) {
+      v += 1;
+    }
+
+    // cout << rst_path << endl;
+    auto rst = vector<string>{};
+    int i = 0;
+    for (; i + 20 < rst_path.size(); i += 20) {
+      auto tmp = vector<int>(next(rst_path.begin(), i),
+                             next(rst_path.begin(), i + 20));
+      rst.push_back(Join(tmp, " "));
+    }
+    auto tmp = vector<int>(next(rst_path.begin(), i), rst_path.end());
+    rst.push_back(Join(tmp, " "));
+
+    return rst;
+  }
+};
+
+struct milk6 {
+  int N;
+  int M;
+  vvi graph;
+  vvi cars;
+
+  auto Solution(const vector<string> &lines) {
+    auto tmp = SplitLine<int>(lines.front());
+    N = tmp.front();
+    M = tmp.back();
+    graph = vvi(N, vi(N, 0));
+    cars = vvi(M);
+
+    rep(i, 1, lines.size()) {
+      auto tmp = SplitLine<int>(lines[i]);
+      graph[tmp[0] - 1][tmp[1] - 1] += tmp.back();
+      cars[i - 1] = {i - 1, tmp[0] - 1, tmp[1] - 1, tmp[2]};
+    }
+
+    auto min_cost = MaxFlow().Get(graph);
+    auto update_cost = min_cost;
+    auto rst = vi{};
+    sort(all(cars), [](caf a, caf b) { return a[3] > b[3]; });
+
+    rep(i, 0, cars.size()) {
+      caf c = cars[i];
+      graph[c[1]][c[2]] -= c[3];
+      auto tmp_cost = MaxFlow().Get(graph);
+
+      if (tmp_cost + c[3] == update_cost) {
+        update_cost = tmp_cost;
+        rst.push_back(c[0]);
+      } else {
+        graph[c[1]][c[2]] += c[3];
+      }
+    }
+
+    sort(all(rst));
+    auto rst_s = vector<string>{};
+    rst_s.push_back(to_string(min_cost) + " " + to_string(rst.size()));
+
+    for (caf v : rst) {
+      rst_s.push_back(to_string(v + 1));
+    }
+    return rst_s;
+  }
+};
+
+struct frameup {
+  vector<vector<pii>> position;
+  vector<vector<pii>> rst_position;
+  vector<vector<char>> target;
+  vvb graph;
+  int num;
+  vector<string> rst_path;
+  vector<pii> best_choose;
+  int N = 26;
+
+  void dfs(int start, vi &path, vb &visited) {
+    if (path.size() == num) {
+      auto tmp = string{};
+      for (caf v : path) {
+        tmp += string(1, 'A' + v);
+      }
+      rst_path.push_back(tmp);
+      return;
+    }
+
+    for (caf item : best_choose) {
+      caf[acc, i] = item;
+      if (visited[i] == false && !rst_position[i].empty()) {
+        for (caf v : path) {
+          if (graph[i][v])
+            return;
+        }
+        visited[i] = true;
+        path.push_back(i);
+
+        dfs(i, path, visited);
+        path.pop_back();
+        visited[i] = false;
+      }
+    }
+  }
+
+  vector<string> BruteForce() {
+    auto tmp_i = vi{};
+
+    rep(i, 0, rst_position.size()) {
+      if (rst_position[i].empty())
+        continue;
+
+      num++;
+      tmp_i.push_back(i);
+      if (position[i].empty()) {
+        position[i].push_back(
+            mp(rst_position[i][0].first, rst_position[i][0].first));
+        position[i].push_back(
+            mp(rst_position[i][0].second, rst_position[i][0].second));
+      }
+
+      auto &r = position[i][0];
+      auto &c = position[i][1];
+      rep(j, 0, rst_position[i].size()) {
+        r.first = min(r.first, rst_position[i][j].first);
+        r.second = max(r.second, rst_position[i][j].first);
+
+        c.first = min(c.first, rst_position[i][j].second);
+        c.second = max(c.second, rst_position[i][j].second);
+      }
+    }
+
+    graph = vvb(N, vb(N, false));
+    auto acc_connect = vi(N);
+
+    auto inPos = [this](const vector<pii> &pos, int r, int c) {
+      if (r == pos[0].first || r == pos[0].second) {
+        return pos[1].first <= c && c <= pos[1].second;
+      } else if (c == pos[1].first || c == pos[1].second) {
+        return pos[0].first <= r && r <= pos[0].second;
+      }
+      return false;
+    };
+
+    rep(i, 0, target.size()) {
+      rep(j, 0, target.front().size()) {
+        caf c = target[i][j];
+        if (c == '.')
+          continue;
+        rep(m, 0, position.size()) {
+          char t = 'A' + m;
+          if (t == c || position[m].empty())
+            continue;
+
+          if (inPos(position[m], i, j)) {
+
+            graph[m][c - 'A'] = true;
+            acc_connect[m]++;
+          }
+        }
+      }
+    }
+
+    auto path = vector<int>{};
+    auto visited = vb(N, false);
+    rep(i, 0, acc_connect.size()) {
+      best_choose.push_back({acc_connect[i], i});
+    }
+    sort(all(best_choose), greater<>());
+    dfs(0, path, visited);
+    sort(all(rst_path));
+    return rst_path;
+  }
+
+  auto Solution(const vector<string> &lines) {
+    position = vector<vector<pii>>(N);
+    rst_position = vector<vector<pii>>(N);
+    auto tmp = SplitLine<int>(lines.front());
+    rep(i, 1, lines.size()) {
+      target.emplace_back();
+
+      rep(j, 0, tmp.back()) {
+        target.back().push_back(lines[i][j]);
+        if (lines[i][j] != '.')
+          rst_position[lines[i][j] - 'A'].push_back(mp(i - 1, j));
+      }
+    }
+    return BruteForce();
+  }
+};
+
 /*
 ID: racer
 TASK: hamming
